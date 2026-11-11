@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MatchEngine.Tests/MatchEngine.Tests.csproj" />
+  <Project Path="MatchEngine/MatchEngine.csproj" />
+</Solution>
