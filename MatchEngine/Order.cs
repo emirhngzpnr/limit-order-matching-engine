@@ -4,7 +4,9 @@ namespace MatchEngine
     {
         // emir adeti
         public int Quantity { get; }
+        // limit fiyat
         public int LimitPrice { get; }
+        // emir türü
         public OrderSide Side { get; }
         public Order(int quantity, int limitPrice, OrderSide side)
         {
