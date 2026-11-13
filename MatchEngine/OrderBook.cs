@@ -16,7 +16,7 @@ namespace MatchEngine
             {
                 var sellOrder = _sellOrders.Find(
                     sell =>
-                    sell.LimitPrice == order.LimitPrice &&
+                    sell.LimitPrice <= order.LimitPrice &&
                     sell.Quantity == order.Quantity
                     );
                 if (sellOrder != null)
@@ -38,7 +38,7 @@ namespace MatchEngine
             {
                 var buyOrder = _buyOrders.Find(
                     buy =>
-                    buy.LimitPrice == order.LimitPrice &&
+                    buy.LimitPrice >= order.LimitPrice &&
                     buy.Quantity == order.Quantity
                     );
                 if (buyOrder != null)
