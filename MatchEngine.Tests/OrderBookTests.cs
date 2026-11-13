@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
+using Xunit.Sdk;
 
 namespace MatchEngine.Tests
 {
@@ -137,6 +138,42 @@ namespace MatchEngine.Tests
             Assert.Equal(5, trade.Quantity);
             var waitingBuy = Assert.Single(book.GetBuyOrders());
             Assert.Equal(100, waitingBuy.LimitPrice);
+            Assert.Empty(book.GetSellOrders());
+
+        }
+        [Fact]
+        public void Submit_MatchesOldestSellOrderWhenPricesAreEqual()
+        {
+            var book = new OrderBook();
+            var firstSellOrder = new Order(5, 100, OrderSide.Sell);
+            var secondSellOrder = new Order(5, 100, OrderSide.Sell);
+            var buyOrder = new Order(5, 100, OrderSide.Buy);
+            book.Submit(firstSellOrder);
+            book.Submit(secondSellOrder);
+            var trades = book.Submit(buyOrder);
+            var trade = Assert.Single(trades);
+            Assert.Equal(100, trade.Price);
+            Assert.Equal(5, trade.Quantity);
+            var waitingSell = Assert.Single(book.GetSellOrders());
+            Assert.Same(secondSellOrder, waitingSell);
+            Assert.Empty(book.GetBuyOrders());
+
+        }
+        [Fact]
+        public void Submit_MatchesOldestBuyOrderWhenPricesAreEqual()
+        {
+            var book = new OrderBook();
+            var firstBuyOrder = new Order(5, 100, OrderSide.Buy);
+            var secondBuyOrder = new Order(5, 100, OrderSide.Buy);
+            var sellOrder = new Order(5, 100, OrderSide.Sell);
+            book.Submit(firstBuyOrder);
+            book.Submit(secondBuyOrder);
+            var trades = book.Submit(sellOrder);
+            var trade = Assert.Single(trades);
+            Assert.Equal(100, trade.Price);
+            Assert.Equal(5, trade.Quantity);
+            var waitingBuy = Assert.Single(book.GetBuyOrders());
+            Assert.Same(secondBuyOrder, waitingBuy);
             Assert.Empty(book.GetSellOrders());
 
         }
