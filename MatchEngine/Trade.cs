@@ -6,8 +6,8 @@ namespace MatchEngine
 {
     public class Trade
     {
-        int Price { get;}
-        int Quantity { get;}
+        public int Price { get;}
+        public int Quantity { get;}
         
 
         public Trade(int price,int quantity)

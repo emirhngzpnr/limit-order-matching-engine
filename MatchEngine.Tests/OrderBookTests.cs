@@ -37,10 +37,27 @@ namespace MatchEngine.Tests
             var sellOrder = new Order(5, 100, OrderSide.Sell);
             var buyOrder = new Order(5, 100, OrderSide.Buy);
             book.Submit(sellOrder);
-      
-
+            var trades = book.Submit(buyOrder);
+            var trade = Assert.Single(trades);
+            Assert.Equal(5, trade.Quantity);
+            Assert.Equal(100, trade.Price);
         }
+        [Fact]
+        public void Submit_MatchesSellOrderWithWaitingBuyOrder()
+        {
+            var book = new OrderBook();
+            var buyOrder = new Order(5, 100, OrderSide.Buy);
+            var sellOrder = new Order(5, 100, OrderSide.Sell);
 
+            book.Submit(buyOrder);
+            var trades = book.Submit(sellOrder);
+
+            var trade = Assert.Single(trades);
+            Assert.Equal(5, trade.Quantity);
+            Assert.Equal(100, trade.Price);
+            Assert.Empty(book.GetBuyOrders());
+            Assert.Empty(book.GetSellOrders());
+        }
 
     }
 }

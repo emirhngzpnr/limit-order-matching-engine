@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.WebSockets;
 using System.Text;
 
 namespace MatchEngine
 {
     public class OrderBook
     {
-        private readonly List<Order> _byOrders = new List<Order>();
+        private readonly List<Order> _buyOrders = new List<Order>();
         private readonly List<Order> _sellOrders = new List<Order>();
 
         public IReadOnlyList<Trade> Submit(Order order)
@@ -28,21 +29,39 @@ namespace MatchEngine
                             sellOrder.Quantity
                             )
                     };
-                    
+
                 }
-                _byOrders.Add(order);
+                _buyOrders.Add(order);
 
             }
-            if (order.Side == OrderSide.Sell)
+            else if (order.Side == OrderSide.Sell)
             {
+                var buyOrder = _buyOrders.Find(
+                    buy =>
+                    buy.LimitPrice == order.LimitPrice &&
+                    buy.Quantity == order.Quantity
+                    );
+                if (buyOrder != null)
+                {
+                    _buyOrders.Remove(buyOrder);
+                    return new[]
+                    {
+                        new Trade(
+                            buyOrder.LimitPrice,
+                            buyOrder.Quantity)
+                    };
+
+                }
+
                 _sellOrders.Add(order);
+
             }
 
             return Array.Empty<Trade>();
         }
         public Order[] GetBuyOrders()
         {
-            return _byOrders.ToArray();
+            return _buyOrders.ToArray();
         }
         public Order[] GetSellOrders()
         {
