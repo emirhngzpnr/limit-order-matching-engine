@@ -7,8 +7,8 @@ namespace MatchEngine
 {
     public class OrderBook
     {
-        private readonly List<Order> _buyOrders = new List<Order>();
-        private readonly List<Order> _sellOrders = new List<Order>();
+        private readonly List<RestingOrder> _buyOrders = new List<RestingOrder>();
+        private readonly List<RestingOrder> _sellOrders = new List<RestingOrder>();
 
         public IReadOnlyList<Trade> Submit(Order order)
         {
@@ -16,34 +16,46 @@ namespace MatchEngine
             {
                 var sellOrder = _sellOrders.Where(
                     sell =>
-                    sell.LimitPrice <= order.LimitPrice &&
-                    sell.Quantity == order.Quantity
+                    sell.Order.LimitPrice <= order.LimitPrice
                     )
-                    .OrderBy(sell => sell.LimitPrice)
+                    .OrderBy(sell => sell.Order.LimitPrice)
                     .FirstOrDefault();
                 if (sellOrder != null)
                 {
-                    _sellOrders.Remove(sellOrder);
+                    int filledQuantity = Math.Min(order.Quantity, sellOrder.RemainingQuantity);
+                    sellOrder.Fill(filledQuantity);
+                    if (sellOrder.RemainingQuantity == 0)
+                    {
+                        _sellOrders.Remove(sellOrder);
+                    }
+                    int remainingBuyQuantity = order.Quantity - filledQuantity;
+
+                    if (remainingBuyQuantity > 0)
+                    {
+                        var waitingBuy = new RestingOrder(order);
+                        waitingBuy.Fill(filledQuantity);
+                        _buyOrders.Add(waitingBuy);
+                    }
                     return new[]
                     {
                         new Trade(
-                            sellOrder.LimitPrice,
-                            sellOrder.Quantity
+                            sellOrder.Order.LimitPrice,
+                            filledQuantity
                             )
                     };
 
                 }
-                _buyOrders.Add(order);
+                _buyOrders.Add(new RestingOrder(order));
 
             }
             else if (order.Side == OrderSide.Sell)
             {
                 var buyOrder = _buyOrders.Where(
                     buy =>
-                    buy.LimitPrice >= order.LimitPrice &&
-                    buy.Quantity == order.Quantity
+                    buy.Order.LimitPrice >= order.LimitPrice &&
+                    buy.RemainingQuantity == order.Quantity
                     )
-                    .OrderByDescending(buy => buy.LimitPrice)
+                    .OrderByDescending(buy => buy.Order.LimitPrice)
                     .FirstOrDefault();
                 if (buyOrder != null)
                 {
@@ -51,25 +63,29 @@ namespace MatchEngine
                     return new[]
                     {
                         new Trade(
-                            buyOrder.LimitPrice,
-                            buyOrder.Quantity)
+                            buyOrder.Order.LimitPrice,
+                            buyOrder.RemainingQuantity)
                     };
 
                 }
 
-                _sellOrders.Add(order);
+                _sellOrders.Add(new RestingOrder(order));
 
             }
 
             return Array.Empty<Trade>();
         }
-        public Order[] GetBuyOrders()
+        public OrderSnapshot[] GetBuyOrders()
         {
-            return _buyOrders.ToArray();
+            return _buyOrders
+                   .Select(buy => new OrderSnapshot(buy.Order, buy.RemainingQuantity))
+                   .ToArray();
         }
-        public Order[] GetSellOrders()
+        public OrderSnapshot[] GetSellOrders()
         {
-            return _sellOrders.ToArray();
+            return _sellOrders
+                    .Select(sell => new OrderSnapshot(sell.Order, sell.RemainingQuantity))
+                    .ToArray();
         }
 
 

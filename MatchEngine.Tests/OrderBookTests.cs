@@ -15,8 +15,8 @@ namespace MatchEngine.Tests
             var order = new Order(5,100,OrderSide.Buy);
             book.Submit(order);
             var waitingOrder = Assert.Single(book.GetBuyOrders());
-            Assert.Equal(5, waitingOrder.Quantity);
-            Assert.Equal(100, waitingOrder.LimitPrice);
+            Assert.Equal(5, waitingOrder.Order.Quantity);
+            Assert.Equal(100, waitingOrder.Order.LimitPrice);
         }
         [Fact]
         public void Submit_AddsSellOrderToEmptyBook()
@@ -25,8 +25,8 @@ namespace MatchEngine.Tests
             var order = new Order(3, 105, OrderSide.Sell);
             book.Submit(order);
             var waitingOrder = Assert.Single(book.GetSellOrders());
-            Assert.Equal(3, waitingOrder.Quantity);
-            Assert.Equal(105, waitingOrder.LimitPrice);
+            Assert.Equal(3, waitingOrder.Order.Quantity);
+            Assert.Equal(105, waitingOrder.Order.LimitPrice);
             Assert.Empty(book.GetBuyOrders());
 
         }
@@ -85,10 +85,10 @@ namespace MatchEngine.Tests
             Assert.Empty(trades);
 
             var waitingBuy = Assert.Single(book.GetBuyOrders());
-            Assert.Equal(99, waitingBuy.LimitPrice);
+            Assert.Equal(99, waitingBuy.Order.LimitPrice);
 
             var waitingSell = Assert.Single(book.GetSellOrders());
-            Assert.Equal(100, waitingSell.LimitPrice);
+            Assert.Equal(100, waitingSell.Order.LimitPrice);
         }
 
         [Fact]
@@ -119,7 +119,7 @@ namespace MatchEngine.Tests
             Assert.Equal(100, trade.Price);
             Assert.Equal(5, trade.Quantity);
             var waitingSell = Assert.Single(book.GetSellOrders());
-            Assert.Equal(101, waitingSell.LimitPrice);
+            Assert.Equal(101, waitingSell.Order.LimitPrice);
             Assert.Empty(book.GetBuyOrders());
 
         }
@@ -137,7 +137,7 @@ namespace MatchEngine.Tests
             Assert.Equal(101, trade.Price);
             Assert.Equal(5, trade.Quantity);
             var waitingBuy = Assert.Single(book.GetBuyOrders());
-            Assert.Equal(100, waitingBuy.LimitPrice);
+            Assert.Equal(100, waitingBuy.Order.LimitPrice);
             Assert.Empty(book.GetSellOrders());
 
         }
@@ -155,7 +155,7 @@ namespace MatchEngine.Tests
             Assert.Equal(100, trade.Price);
             Assert.Equal(5, trade.Quantity);
             var waitingSell = Assert.Single(book.GetSellOrders());
-            Assert.Same(secondSellOrder, waitingSell);
+            Assert.Same(secondSellOrder, waitingSell.Order);
             Assert.Empty(book.GetBuyOrders());
 
         }
@@ -173,9 +173,41 @@ namespace MatchEngine.Tests
             Assert.Equal(100, trade.Price);
             Assert.Equal(5, trade.Quantity);
             var waitingBuy = Assert.Single(book.GetBuyOrders());
-            Assert.Same(secondBuyOrder, waitingBuy);
+            Assert.Same(secondBuyOrder, waitingBuy.Order);
             Assert.Empty(book.GetSellOrders());
 
+        }
+
+        [Fact]
+        public void Submit_PartiallyFillsWaitingSellOrder()
+        {
+            var book = new OrderBook();
+            var sellOrder = new Order(5, 100, OrderSide.Sell);
+            var buyOrder = new Order(2, 100, OrderSide.Buy);
+            book.Submit(sellOrder);
+            var trades = book.Submit(buyOrder);
+            var trade = Assert.Single(trades);
+            Assert.Equal(100, trade.Price);
+            Assert.Equal(2, trade.Quantity);
+            var waitingSell = Assert.Single(book.GetSellOrders());
+            Assert.Equal(3, waitingSell.RemainingQuantity);
+            Assert.Empty(book.GetBuyOrders());
+        }
+
+        [Fact]
+        public void Submit_AddsRemainingBuyQuantityToBook()
+        {
+            var book = new OrderBook();
+            var sellOrder = new Order(2, 100, OrderSide.Sell);
+            var buyOrder = new Order(5, 100, OrderSide.Buy);
+            book.Submit(sellOrder);
+            var trades = book.Submit(buyOrder);
+            var trade = Assert.Single(trades);
+            Assert.Equal(100, trade.Price);
+            Assert.Equal(2, trade.Quantity);
+            var waitingBuy = Assert.Single(book.GetBuyOrders());
+            Assert.Equal(3, waitingBuy.RemainingQuantity);
+            Assert.Empty(book.GetSellOrders());
         }
 
     }
