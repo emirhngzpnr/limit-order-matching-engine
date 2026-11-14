@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestPlatform.CrossPlatEngine.Helpers;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -209,6 +210,36 @@ namespace MatchEngine.Tests
             Assert.Equal(3, waitingBuy.RemainingQuantity);
             Assert.Empty(book.GetSellOrders());
         }
+        [Fact]
+        public void Submit_PartiallyFillsWaitingBuyOrder()
+        {
+            var book = new OrderBook();
+            var buyOrder = new Order(5, 100, OrderSide.Buy);
+            var sellOrder = new Order(2, 100, OrderSide.Sell);
+            book.Submit(buyOrder);
+            var trades = book.Submit(sellOrder);
+            var trade = Assert.Single(trades);
+            Assert.Equal(100, trade.Price);
+            Assert.Equal(2, trade.Quantity);
+            var waitingBuy = Assert.Single(book.GetBuyOrders());
+            Assert.Equal(3, waitingBuy.RemainingQuantity);
+            Assert.Empty(book.GetSellOrders());
+        }
 
+        [Fact]
+        public void Submit_AddsRemainingSellQuantityToBook()
+        {
+            var book = new OrderBook();
+            var buyOrder = new Order(2, 100, OrderSide.Buy);
+            var sellOrder = new Order(5, 100, OrderSide.Sell);
+            book.Submit(buyOrder);
+            var trades = book.Submit(sellOrder);
+            var trade = Assert.Single(trades);
+            Assert.Equal(100, trade.Price);
+            Assert.Equal(2, trade.Quantity);
+            var waitingSell = Assert.Single(book.GetSellOrders());
+            Assert.Equal(3, waitingSell.RemainingQuantity);
+            Assert.Empty(book.GetBuyOrders());
+        }
     }
 }
