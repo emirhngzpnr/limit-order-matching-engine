@@ -322,5 +322,30 @@ namespace MatchEngine.Tests
             var waitingSellOrder = Assert.Single(book.GetSellOrders());
             Assert.Equal(sellOrder.Id, waitingSellOrder.Order.Id);
         }
+
+        [Fact]
+        public void Cancel_RemovesRemainingQuantityOfPartiallyFilledOrder()
+        {
+            var book = new OrderBook();
+            var sellOrder = new Order(5, 100, OrderSide.Sell);
+            var buyOrder = new Order(2, 100, OrderSide.Buy);
+            book.Submit(sellOrder);
+            var trades = book.Submit(buyOrder);
+            var trade = Assert.Single(trades);
+            Assert.Equal(2, trade.Quantity);
+            var waitingSellOrder = Assert.Single(book.GetSellOrders());
+            Assert.Equal(3, waitingSellOrder.RemainingQuantity);
+            Assert.True(book.Cancel(sellOrder.Id));
+            Assert.Empty(book.GetSellOrders());
+        }
+        [Fact]
+        public void Cancel_RemovesWaitingBuyOrder()
+        {
+            var book = new OrderBook();
+            var buyOrder = new Order(5, 100, OrderSide.Buy);
+            book.Submit(buyOrder);
+            Assert.True(book.Cancel(buyOrder.Id));
+            Assert.Empty(book.GetBuyOrders());
+        }
     }
 }
