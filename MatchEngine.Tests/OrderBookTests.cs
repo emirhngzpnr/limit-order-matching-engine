@@ -241,5 +241,63 @@ namespace MatchEngine.Tests
             Assert.Equal(3, waitingSell.RemainingQuantity);
             Assert.Empty(book.GetBuyOrders());
         }
+
+        [Fact]
+        public void Submit_MatchesBuyOrderWithMultipleWaitingSellOrders()
+        {
+            var book = new OrderBook();
+            var firstSellorder = new Order(2, 100, OrderSide.Sell);
+            var secondSellorder = new Order(4, 101, OrderSide.Sell);
+            var buyOrder = new Order(5, 101, OrderSide.Buy);
+            book.Submit(firstSellorder);
+            book.Submit(secondSellorder);
+            var trades = book.Submit(buyOrder);
+            Assert.Collection(trades,
+         first =>
+       {
+           Assert.Equal(100, first.Price);
+           Assert.Equal(2, first.Quantity);
+       },
+         second =>
+       {
+           Assert.Equal(101, second.Price);
+           Assert.Equal(3, second.Quantity);
+       });
+
+            var waitingSell = Assert.Single(book.GetSellOrders());
+            Assert.Equal(101, waitingSell.Order.LimitPrice);
+            Assert.Equal(1, waitingSell.RemainingQuantity);
+            Assert.Empty(book.GetBuyOrders());
+        }
+
+        [Fact]
+        public void Submit_MatchesSellOrderWithMultipleWaitingBuyOrders()
+        {
+            var book = new OrderBook();
+            var firstBuyOrder = new Order(4, 100, OrderSide.Buy);
+            var secondBuyOrder = new Order(2, 101, OrderSide.Buy);
+            var sellOrder = new Order(5, 100, OrderSide.Sell);
+            book.Submit(firstBuyOrder);
+            book.Submit(secondBuyOrder);
+            var trades = book.Submit(sellOrder);
+            Assert.Collection(trades,
+                first =>
+                {
+                    Assert.Equal(101, first.Price);
+                    Assert.Equal(2, first.Quantity);
+                },
+                second =>
+                {
+                    Assert.Equal(100, second.Price);
+                    Assert.Equal(3, second.Quantity);
+                }
+                );
+
+            var waitingBuy = Assert.Single(book.GetBuyOrders());
+            Assert.Equal(1, waitingBuy.RemainingQuantity);
+            Assert.Empty(book.GetSellOrders());
+        }
     }
+
+   
 }

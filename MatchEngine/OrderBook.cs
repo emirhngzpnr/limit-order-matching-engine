@@ -15,79 +15,85 @@ namespace MatchEngine
             #region     Alış İşlemleri
             if (order.Side == OrderSide.Buy)
             {
-                var sellOrder = _sellOrders.Where(
-                    sell =>
-                    sell.Order.LimitPrice <= order.LimitPrice
-                    )
-                    .OrderBy(sell => sell.Order.LimitPrice)
-                    .FirstOrDefault();
+                var incomingBuy = new RestingOrder(order);
+                var trades = new List<Trade>();
 
-                if (sellOrder != null)
+                while (incomingBuy.RemainingQuantity > 0)
                 {
-                    int filledQuantity = Math.Min(order.Quantity, sellOrder.RemainingQuantity);
+                    var sellOrder = _sellOrders
+                        .Where(sell => sell.Order.LimitPrice <= order.LimitPrice)
+                        .OrderBy(sell => sell.Order.LimitPrice)
+                        .FirstOrDefault();
+
+                    if (sellOrder == null)
+                    {
+                        break;
+                    }
+
+                    int filledQuantity = Math.Min(
+                        incomingBuy.RemainingQuantity,
+                        sellOrder.RemainingQuantity);
+
+                    incomingBuy.Fill(filledQuantity);
                     sellOrder.Fill(filledQuantity);
+
+                    trades.Add(new Trade(sellOrder.Order.LimitPrice, filledQuantity));
+
                     if (sellOrder.RemainingQuantity == 0)
                     {
                         _sellOrders.Remove(sellOrder);
                     }
-                    int remainingBuyQuantity = order.Quantity - filledQuantity;
-
-                    if (remainingBuyQuantity > 0)
-                    {
-                        var waitingBuy = new RestingOrder(order);
-                        waitingBuy.Fill(filledQuantity);
-                        _buyOrders.Add(waitingBuy);
-                    }
-                    return new[]
-                    {
-                        new Trade(
-                            sellOrder.Order.LimitPrice,
-                            filledQuantity
-                            )
-                    };
-
                 }
-                _buyOrders.Add(new RestingOrder(order));
 
+                if (incomingBuy.RemainingQuantity > 0)
+                {
+                    _buyOrders.Add(incomingBuy);
+                }
+
+                return trades;
             }
             #endregion
 
             #region  Satış İşlemleri
             else if (order.Side == OrderSide.Sell)
             {
-                var buyOrder = _buyOrders.Where(
-                    buy =>
-                    buy.Order.LimitPrice >= order.LimitPrice
-                    )
-                    .OrderByDescending(buy => buy.Order.LimitPrice)
-                    .FirstOrDefault();
+                var incomingSell = new RestingOrder(order);
+                var trades = new List<Trade>();
 
-                if (buyOrder == null)
+                while (incomingSell.RemainingQuantity > 0)
                 {
-                    _sellOrders.Add(new RestingOrder(order));
-                    return Array.Empty<Trade>();
-                }
-                int filledQuantity = Math.Min(order.Quantity,buyOrder.RemainingQuantity);
+                    var buyOrder = _buyOrders.Where(
+                  buy =>
+                  buy.Order.LimitPrice >= order.LimitPrice
+                  )
+                  .OrderByDescending(buy => buy.Order.LimitPrice)
+                  .FirstOrDefault();
 
-                buyOrder.Fill(filledQuantity);
-
-                if (buyOrder.RemainingQuantity == 0)
-                {
-                    _buyOrders.Remove(buyOrder);
-                }
-                int remainingSellQuantity = order.Quantity - filledQuantity;
-                if (remainingSellQuantity > 0)
-                {
-                    var waitingSell = new RestingOrder(order);
-                    waitingSell.Fill(filledQuantity);
-                    _sellOrders.Add(waitingSell);
-                }
-                    return new[]
+                    if (buyOrder == null)
                     {
-                        new Trade(
-                            buyOrder.Order.LimitPrice,
-                            filledQuantity)
-                    };
+                        break;
+                    }
+                    int filledQuantity = Math.Min(
+                        incomingSell.RemainingQuantity,
+                        buyOrder.RemainingQuantity);
+
+                    incomingSell.Fill(filledQuantity);
+                    buyOrder.Fill(filledQuantity);
+
+                    trades.Add(new Trade(buyOrder.Order.LimitPrice, filledQuantity));
+                    
+                    if (buyOrder.RemainingQuantity == 0)
+                    {
+                        _buyOrders.Remove(buyOrder);
+                    }
+                }
+
+              
+                if (incomingSell.RemainingQuantity > 0)
+                {
+                    _sellOrders.Add(incomingSell);
+                }
+                return trades;
 
                 }
             #endregion
