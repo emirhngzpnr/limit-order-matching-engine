@@ -100,6 +100,28 @@ namespace MatchEngine
 
             return Array.Empty<Trade>();
         }
+
+        public bool Cancel(Guid orderId)
+        {
+            var waitingBuy = _buyOrders
+                .Find(restingOrder => restingOrder.Order.Id==orderId);
+            
+            if (waitingBuy != null)
+            {
+                _buyOrders.Remove(waitingBuy);
+                return true;
+            }
+            var waitingSell = _sellOrders
+                .Find(restingOrder => restingOrder.Order.Id == orderId);
+           
+            if (waitingSell != null)
+            {
+                _sellOrders.Remove(waitingSell);
+                return true;
+            }
+
+            return false;
+        }
         public OrderSnapshot[] GetBuyOrders()
         {
             return _buyOrders

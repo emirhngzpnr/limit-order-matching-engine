@@ -13,7 +13,7 @@ namespace MatchEngine.Tests
         public void Submit_AddsBuyOrderToEmptyBook()
         {
             var book = new OrderBook();
-            var order = new Order(5,100,OrderSide.Buy);
+            var order = new Order(5, 100, OrderSide.Buy);
             book.Submit(order);
             var waitingOrder = Assert.Single(book.GetBuyOrders());
             Assert.Equal(5, waitingOrder.Order.Quantity);
@@ -297,7 +297,30 @@ namespace MatchEngine.Tests
             Assert.Equal(1, waitingBuy.RemainingQuantity);
             Assert.Empty(book.GetSellOrders());
         }
-    }
 
-   
+        [Fact]
+        public void Cancel_RemovesOnlyOrderWithMatchingId()
+        {
+            var book = new OrderBook();
+            var firstSellOrder = new Order(5, 100, OrderSide.Sell);
+            var secondSellOrder = new Order(5, 100, OrderSide.Sell);
+            book.Submit(firstSellOrder);
+            book.Submit(secondSellOrder);
+            Assert.True(book.Cancel(firstSellOrder.Id));
+            var waitingSellOrder = Assert.Single(book.GetSellOrders());
+            Assert.Equal(secondSellOrder.Id, waitingSellOrder.Order.Id);
+
+        }
+
+        [Fact]
+        public void Cancel_ReturnsFalseWhenOrderIsNotWaiting()
+        {
+            var book = new OrderBook();
+            var sellOrder = new Order(5, 100, OrderSide.Sell);
+            book.Submit(sellOrder);
+            Assert.False(book.Cancel(Guid.NewGuid()));
+            var waitingSellOrder = Assert.Single(book.GetSellOrders());
+            Assert.Equal(sellOrder.Id, waitingSellOrder.Order.Id);
+        }
+    }
 }

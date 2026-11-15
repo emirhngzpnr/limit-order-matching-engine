@@ -2,6 +2,8 @@ namespace MatchEngine
 {
     public class Order
     {
+        // emir kimliği
+        public Guid Id { get; } = Guid.NewGuid();
         // emir adeti
         public int Quantity { get; }
         // limit fiyat
