@@ -347,5 +347,42 @@ namespace MatchEngine.Tests
             Assert.True(book.Cancel(buyOrder.Id));
             Assert.Empty(book.GetBuyOrders());
         }
+
+        [Fact]
+        public void Submit_RecordsBuyAndSellOrderIdsInTrade()
+        {
+            var book = new OrderBook();
+            var sellOrder = new Order(5, 100, OrderSide.Sell);
+            var buyOrder = new Order(5, 100, OrderSide.Buy);
+            book.Submit(sellOrder);
+            var trades = book.Submit(buyOrder);
+            var trade = Assert.Single(trades);
+            Assert.Equal(buyOrder.Id, trade.BuyOrderId);
+            Assert.Equal(sellOrder.Id, trade.SellOrderId);
+        }
+
+        [Fact]
+        public void Replay_RestoresRemainingQuantityAndOrderId()
+        {
+            var book = new OrderBook();
+            var sellOrder = new Order(5, 100, OrderSide.Sell);
+            var buyOrder = new Order(2, 100, OrderSide.Buy);
+            book.Submit(sellOrder);
+            var trades = book.Submit(buyOrder);
+            var waitingSellOrder = Assert.Single(book.GetSellOrders());
+            var trade = Assert.Single(trades);
+            Assert.Equal(buyOrder.Id, trade.BuyOrderId);
+            Assert.Equal(sellOrder.Id, trade.SellOrderId);
+            Assert.Equal(3, waitingSellOrder.RemainingQuantity);
+
+            var restoredBook = new OrderBook();
+            var restoredSell= new Order(sellOrder.Id,5, 100, OrderSide.Sell);
+            var restoredBuy = new Order(buyOrder.Id, 2, 100, OrderSide.Buy);
+            restoredBook.Submit(restoredSell);
+            restoredBook.Submit(restoredBuy);
+            var restoredWaitingSell = Assert.Single(restoredBook.GetSellOrders());
+            Assert.Equal(sellOrder.Id, restoredWaitingSell.Order.Id);
+            Assert.Equal(3, restoredWaitingSell.RemainingQuantity);
+        }
     }
 }
