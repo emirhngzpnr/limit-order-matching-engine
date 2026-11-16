@@ -384,5 +384,35 @@ namespace MatchEngine.Tests
             Assert.Equal(sellOrder.Id, restoredWaitingSell.Order.Id);
             Assert.Equal(3, restoredWaitingSell.RemainingQuantity);
         }
+
+        [Fact]
+        public void Replay_AppliesCancellationAfterPartialFill()
+        {
+            var sellId = Guid.NewGuid();
+            var buyId = Guid.NewGuid();
+
+            OrderCommand[] beforeCancel =
+            {
+                      new SubmitOrderCommand(sellId, 5, 100, OrderSide.Sell),
+                      new SubmitOrderCommand(buyId, 2, 100, OrderSide.Buy)
+            };
+
+            OrderCommand[] afterCancel =
+            {
+                  beforeCancel[0],
+                  beforeCancel[1],
+                  new CancelOrderCommand(sellId)
+            };
+
+            var bookBeforeCancel = OrderReplay.Replay(beforeCancel);
+            var waitingSell = Assert.Single(bookBeforeCancel.GetSellOrders());
+            Assert.Equal(sellId, waitingSell.Order.Id);
+            Assert.Equal(3, waitingSell.RemainingQuantity);
+            Assert.Empty(bookBeforeCancel.GetBuyOrders());
+
+            var bookAfterCancel = OrderReplay.Replay(afterCancel);
+            Assert.Empty(bookAfterCancel.GetSellOrders());
+            Assert.Empty(bookAfterCancel.GetBuyOrders());
+        }
     }
 }
