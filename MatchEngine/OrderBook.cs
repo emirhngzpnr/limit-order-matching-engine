@@ -37,7 +37,7 @@ namespace MatchEngine
                     incomingBuy.Fill(filledQuantity);
                     sellOrder.Fill(filledQuantity);
 
-                    trades.Add(new Trade(sellOrder.Order.LimitPrice, filledQuantity));
+                    trades.Add(new Trade(sellOrder.Order.LimitPrice, filledQuantity,incomingBuy.Order.Id,order.Id));
 
                     if (sellOrder.RemainingQuantity == 0)
                     {
@@ -80,7 +80,7 @@ namespace MatchEngine
                     incomingSell.Fill(filledQuantity);
                     buyOrder.Fill(filledQuantity);
 
-                    trades.Add(new Trade(buyOrder.Order.LimitPrice, filledQuantity));
+                    trades.Add(new Trade(buyOrder.Order.LimitPrice, filledQuantity,incomingSell.Order.Id,order.Id));
                     
                     if (buyOrder.RemainingQuantity == 0)
                     {
