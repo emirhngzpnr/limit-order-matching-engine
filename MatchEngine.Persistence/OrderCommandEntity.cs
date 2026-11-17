@@ -13,5 +13,24 @@ namespace MatchEngine.Persistence
         public int? LimitPrice { get; private set; }
         public OrderSide? Side { get; private set; }
 
+        private OrderCommandEntity()
+        { 
+        }
+
+        internal OrderCommandEntity(
+            OrderCommandType commandType,
+            Guid orderId,
+            int? quantity,
+            int? limitPrice,
+            OrderSide? side
+
+            )
+        {
+            CommandType = commandType;
+            OrderId = orderId;
+            Quantity = quantity;
+            LimitPrice = limitPrice;
+            Side = side;
+        }
     }
 }
