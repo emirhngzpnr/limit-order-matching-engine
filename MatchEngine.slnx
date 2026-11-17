@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="MatchEngine.Persistence/MatchEngine.Persistence.csproj" Id="022cbdf9-a938-4025-988a-922325926ee0" />
   <Project Path="MatchEngine.Tests/MatchEngine.Tests.csproj" />
   <Project Path="MatchEngine/MatchEngine.csproj" />
 </Solution>
