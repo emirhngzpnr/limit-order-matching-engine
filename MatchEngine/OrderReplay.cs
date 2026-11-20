@@ -10,17 +10,26 @@ namespace MatchEngine
         {
             var book = new OrderBook();
 
-            foreach(var command in commands)
+            Apply(book, commands);
+
+            return book;
+        }
+
+        public static void Apply(
+            OrderBook book,
+            IEnumerable<OrderCommand> commands)
+        {
+            foreach (var command in commands)
             {
                 switch (command)
                 {
                     case SubmitOrderCommand submit:
-                        var order = new Order
-                        (
+                        var order = new Order(
                             submit.OrderId,
                             submit.Quantity,
                             submit.LimitPrice,
                             submit.Side);
+
                         book.Submit(order);
                         break;
 
@@ -30,11 +39,10 @@ namespace MatchEngine
 
                     default:
                         throw new ArgumentException(
-                            "Desteklenmeyen emir komutu", nameof(commands));
+                            "Desteklenmeyen komut türü.",
+                            nameof(commands));
                 }
             }
-
-            return book;
         }
     }
 }
