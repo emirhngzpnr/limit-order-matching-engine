@@ -6,7 +6,7 @@ using System.Text;
 
 namespace MatchEngine.Persistence
 {
-    public class SqlOrderCommandStore
+    public class SqlOrderCommandStore:IOrderCommandStore    
     {
         private readonly MatchEngineDbContext _context;
         public SqlOrderCommandStore(MatchEngineDbContext context)

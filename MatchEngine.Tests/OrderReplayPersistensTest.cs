@@ -204,7 +204,6 @@ namespace MatchEngine.Tests
                 ?? throw new InvalidOperationException(
                     "MATCHENGINE_SQL_CONNECTION ortam değişkenini ayarla.");
 
-            // Mevcut bağlantıyı kullan, veritabanı adını teste özel değiştir.
             var connectionBuilder = new SqlConnectionStringBuilder(connectionString)
             {
                 InitialCatalog = $"MatchEngineTest_Recovery_{Guid.NewGuid():N}"
@@ -253,6 +252,93 @@ namespace MatchEngine.Tests
             finally
             {
                 // Sadece bu test için oluşturulan veritabanını sil.
+                await using var cleanupContext =
+                    new MatchEngineDbContext(options);
+
+                await cleanupContext.Database.EnsureDeletedAsync();
+            }
+        }
+
+        [Fact]
+        public async Task SubmitAsync_ProducesSameStateAfterRecovery()
+        {
+            var connectionString =
+                Environment.GetEnvironmentVariable("MATCHENGINE_SQL_CONNECTION")
+                ?? throw new InvalidOperationException(
+                    "MATCHENGINE_SQL_CONNECTION ortam değişkenini ayarla.");
+
+            var connectionBuilder = new SqlConnectionStringBuilder(connectionString)
+            {
+                InitialCatalog = $"MatchEngineTest_Processor_{Guid.NewGuid():N}"
+            };
+
+            var options = new DbContextOptionsBuilder<MatchEngineDbContext>()
+                .UseSqlServer(connectionBuilder.ConnectionString)
+                .Options;
+
+            var sellId = Guid.NewGuid();
+            var buyId = Guid.NewGuid();
+
+            try
+            {
+                OrderSnapshot liveSell;
+
+                // Normal çalışma: komutları kaydet ve canlı deftere uygula.
+                await using (var writeContext = new MatchEngineDbContext(options))
+                {
+                    await writeContext.Database.MigrateAsync();
+
+                    var store = new SqlOrderCommandStore(writeContext);
+                    var liveBook = new OrderBook();
+
+                    var processor = new OrderCommandProcessor(store, liveBook);
+
+                    var sellTrades = await processor.SubmitAsync(
+                        new SubmitOrderCommand(
+                            sellId, 5, 100, OrderSide.Sell));
+
+                    Assert.Empty(sellTrades);
+
+                    var buyTrades = await processor.SubmitAsync(
+                        new SubmitOrderCommand(
+                            buyId, 2, 100, OrderSide.Buy));
+
+                    var trade = Assert.Single(buyTrades);
+
+                    Assert.Equal(100, trade.Price);
+                    Assert.Equal(2, trade.Quantity);
+                    Assert.Equal(sellId, trade.SellOrderId);
+                    Assert.Equal(buyId, trade.BuyOrderId);
+
+                    liveSell = Assert.Single(liveBook.GetSellOrders());
+
+                    Assert.Equal(sellId, liveSell.Order.Id);
+                    Assert.Equal(3, liveSell.RemainingQuantity);
+                    Assert.Empty(liveBook.GetBuyOrders());
+                }
+
+                // Yeniden başlatmayı temsil et: yeni context ve yeni defter.
+                await using var readContext = new MatchEngineDbContext(options);
+
+                var readStore = new SqlOrderCommandStore(readContext);
+                var recovery = new OrderBookRecovery(readStore);
+
+                var restoredBook = await recovery.RestoreAsync(batchSize: 1);
+
+                var restoredSell = Assert.Single(restoredBook.GetSellOrders());
+
+                Assert.Equal(liveSell.Order.Id, restoredSell.Order.Id);
+                Assert.Equal(liveSell.Order.Quantity, restoredSell.Order.Quantity);
+                Assert.Equal(liveSell.Order.LimitPrice, restoredSell.Order.LimitPrice);
+                Assert.Equal(liveSell.Order.Side, restoredSell.Order.Side);
+                Assert.Equal(
+                    liveSell.RemainingQuantity,
+                    restoredSell.RemainingQuantity);
+
+                Assert.Empty(restoredBook.GetBuyOrders());
+            }
+            finally
+            {
                 await using var cleanupContext =
                     new MatchEngineDbContext(options);
 
